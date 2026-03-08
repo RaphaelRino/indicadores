@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAV Analytics</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="css/main.css">
+
+
+</head>
+
+<body>
+
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Carregando dados...</div>
+    </div>
+
+    <div class="main-container">
+
+        <div id="static-header-group">
+            <header class="app-header">
+                <div class="header-left">
+                    <div class="logo">
+                        <i id="logo-icon" data-lucide="database-zap" style="color:var(--accent)"></i>
+                        <span id="app-title">FAV ANALYTICS</span>
+                    </div>
+
+                    <div class="view-toggles" style="align-items: stretch;">
+                        <button class="view-btn active" id="mod-geral" onclick="setModule('geral')"
+                            style="display: flex; align-items: center; justify-content: center;">Geral</button>
+                        <button class="view-btn" id="mod-oftalmo" onclick="setModule('oftalmo')"
+                            style="line-height: 1.1; padding: 4px 10px;">Linha de Cuidado<br>de Catarata</button>
+                    </div>
+
+                    <div class="filter-wrapper flex-center-gap">
+                        <select id="sector-filter" onchange="setSector(this.value)" style="height:32px"></select>
+
+                        <div id="period-filter-wrapper">
+                            <i data-lucide="calendar" style="width:14px"></i>
+                            <select id="an-start" onchange="setAnalyticsPeriod()"></select>
+                            <span>-</span>
+                            <select id="an-end" onchange="setAnalyticsPeriod()"></select>
+                        </div>
+
+                        <div class="year-selector">
+                            <button class="year-btn active" id="btn-2025" onclick="setYear('2025')">2025</button>
+                            <button class="year-btn" id="btn-2026" onclick="setYear('2026')">2026</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="header-right">
+
+                    <div class="view-toggles">
+                        <button class="view-btn active" id="btn-view-table" onclick="switchView('table')"
+                            title="Visão Tabela">
+                            <i data-lucide="table"></i>
+                        </button>
+                        <button class="view-btn" id="btn-view-exec" onclick="switchView('exec')"
+                            title="Visão Analítica">
+                            <i data-lucide="bar-chart-2"></i>
+                        </button>
+                        <button class="view-btn" id="btn-view-manager" onclick="switchView('manager')"
+                            title="Visão Gerencial">
+                            <i data-lucide="briefcase"></i>
+                        </button>
+                    </div>
+
+                    <div class="v-divider"></div>
+
+                    <div class="flex-center-gap">
+                        <button class="icon-btn" onclick="openPdfModal()" title="Exportar">
+                            <i data-lucide="download"></i>
+                        </button>
+                        <button class="icon-btn" onclick="toggleTheme()" title="Alterar Tema">
+                            <i id="theme-icon" data-lucide="sun"></i>
+                        </button>
+                    </div>
+
+                    <a href="nps.html" target="_blank" class="btn-ghost nps-link-btn"
+                        title="Abrir Painel NPS em nova aba">
+                        <i data-lucide="external-link"></i> NPS
+                    </a>
+
+                </div>
+            </header>
+
+
+        </div>
+
+        <div class="content-viewport" id="mainContentArea">
+
+            <div id="view-table" class="view-pane active">
+                <div class="table-wrapper">
+                    <table id="main-table">
+                        <thead>
+                            <tr>
+                                <th class="col-name" ondblclick="openSectorManager()" style="user-select:none"
+                                    title="..">Indicador</th>
+                                <th class="col-meta">Meta</th>
+                                <th>Jan</th>
+                                <th>Fev</th>
+                                <th>Mar</th>
+                                <th>Abr</th>
+                                <th>Mai</th>
+                                <th>Jun</th>
+                                <th>Jul</th>
+                                <th>Ago</th>
+                                <th>Set</th>
+                                <th>Out</th>
+                                <th>Nov</th>
+                                <th>Dez</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body"></tbody>
+                    </table>
+
+                    <div id="empty-state" class="empty-state" style="display:none">
+                        <i data-lucide="folder-open" size="48" style="opacity:0.3"></i>
+                        <p>Nenhum indicador encontrado.</p>
+                        <button class="btn-primary" onclick="importFrom2025()">Importar Dados 2025</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-exec" class="view-pane" style="display:none">
+
+
+
+
+
+
+                <div class="charts-grid" id="charts-area">
+                    <div class="chart-card full">
+                        <div class="chart-header-row">
+                            <h3>Performance Anual</h3>
+                            <div class="mini-kpi-group">
+                                <div class="mini-kpi">
+                                    <span class="mk-label" id="kpi-perf-label">Perf. Inst.</span>
+                                    <span class="mk-val" id="kpi-perf">-</span>
+                                </div>
+                                <div class="mini-kpi">
+                                    <span class="mk-label">Pontualidade</span>
+                                    <span class="mk-val" id="kpi-punc">-</span>
+                                </div>
+                                <div class="mini-kpi danger">
+                                    <span class="mk-label">Críticos</span>
+                                    <span class="mk-val" id="kpi-crit">-</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chart-box"><canvas id="chart-trend"></canvas></div>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Status Geral</h3>
+                        <div class="chart-box"><canvas id="chart-status"></canvas></div>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Pontualidade</h3>
+                        <div class="chart-box"><canvas id="chart-punc"></canvas></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-manager" class="view-pane" style="display:none">
+                <!-- Manager Header -->
+                <div class="manager-header-grid">
+                    <div class="manager-kpi-card cascade-item" style="animation-delay: 0.05s"
+                        data-tooltip="Média ponderada dos scores de todos os setores (Maturidade).">
+                        <div class="mk-icon success"><i data-lucide="activity"></i></div>
+                        <div class="mk-content">
+                            <span class="mk-label">Maturidade Geral</span>
+                            <span class="mk-value" id="man-score-total">-</span>
+                        </div>
+                    </div>
+                    <div class="manager-kpi-card cascade-item" style="animation-delay: 0.1s"
+                        data-tooltip="Soma total de resultados 'Ruins' (Vermelhos) em todos os indicadores no ano.">
+                        <div class="mk-icon warn"><i data-lucide="alert-triangle"></i></div>
+                        <div class="mk-content">
+                            <span class="mk-label">Indicadores Críticos</span>
+                            <span class="mk-value" id="man-critical-total">-</span>
+                        </div>
+                    </div>
+                    <div class="manager-kpi-card"
+                        data-tooltip="% de resultados Críticos que possuem análise gerencial preenchida.">
+                        <div class="mk-icon info"><i data-lucide="file-check"></i></div>
+                        <div class="mk-content">
+                            <span class="mk-label">Cobertura de Análises</span>
+                            <span class="mk-value" id="man-analysis-coverage">-</span>
+                        </div>
+                    </div>
+                    <div class="manager-kpi-card" style="border-right:none"
+                        data-tooltip="% de Planos de Ação onde o resultado melhorou no mês seguinte.">
+                        <div class="mk-icon primary"><i data-lucide="trending-up"></i></div>
+                        <div class="mk-content">
+                            <span class="mk-label">Eficácia dos Planos</span>
+                            <span class="mk-value" id="man-plan-efficacy">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Manager Content Grid -->
+                <div class="manager-grid">
+
+                    <!-- Left Column: Sector Ranking -->
+                    <div class="manager-section box-shadowed">
+                        <h3 class="section-title"
+                            data-tooltip="Score = 40% Metas Atingidas + 30% Pontualidade + 30% Cobertura de Análises"><i
+                                data-lucide="trophy"></i> Ranking de Setores (Maturidade)</h3>
+                        <div class="table-scroller">
+                            <table class="manager-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:60px; text-align:center">#</th>
+                                        <th>Setor</th>
+                                        <th style="text-align:center">Score</th>
+                                        <th style="text-align:right">Detalhes</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="manager-sector-list"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Alerts & Insights -->
+                    <div class="manager-feed">
+
+                        <!-- Reincidentes -->
+                        <div class="manager-section box-shadowed" style="flex:1">
+                            <h3 class="section-title warn"
+                                data-tooltip="Indicadores com resultado ruim por 2 ou mais meses consecutivos."><i
+                                    data-lucide="flame"></i> Alerta: Reincidentes (≥2 meses)
+                            </h3>
+                            <div class="insight-list" id="man-recurrent-list">
+                                <!-- Items injected here -->
+                            </div>
+                        </div>
+
+                        <!-- Sem Análise -->
+                        <div class="manager-section box-shadowed" style="flex:1">
+                            <h3 class="section-title danger"
+                                data-tooltip="Indicadores Críticos (Vermelhos) que ainda não possuem análise cadastrada.">
+                                <i data-lucide="file-warning"></i> Críticos Sem Análise
+                            </h3>
+                            <div class="insight-list" id="man-missing-list">
+                                <!-- Items injected here -->
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button class="fab" onclick="openCreateModal()"><i data-lucide="plus"></i></button>
+    </div>
+
+    <div class="modal-overlay" id="mainModal">
+        <div class="modal-box large">
+            <div class="modal-header">
+                <h2 id="modalTitle">Detalhes</h2>
+                <button class="close-btn" onclick="closeModal('mainModal')"><i data-lucide="x"></i></button>
+            </div>
+
+            <div class="modal-body">
+
+                <div id="mode-view">
+                    <div class="stats-row">
+
+                        <div class="stat-card">
+                            <div class="stat-label">Meta Alvo</div>
+                            <div class="stat-val accent" id="viewMetaDisplay">-</div>
+                            <div id="viewLogicBadge" class="logic-badge">-</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-label">Último</div>
+                            <div class="stat-val" id="viewLast">-</div>
+                            <div id="viewLastPct" class="sub-stat">-</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-label">Média</div>
+                            <div class="stat-val" id="viewAvg">-</div>
+                            <div id="viewAvgPct" class="sub-stat">-</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-label">Consistência</div>
+                            <div class="stat-val" id="viewTarget" style="color:var(--good); cursor:help">-</div>
+                        </div>
+
+                        <div class="stat-card bordered" style="border-color:var(--border)">
+                            <div class="stat-label">Pontualidade</div>
+                            <div class="stat-val" id="viewPunc" style="font-size:1.4rem">-</div>
+                            <div id="puncBadge" style="margin-top:2px; font-size:0.7rem"></div>
+                        </div>
+
+                    </div>
+
+                    <div class="chart-wrapper">
+                        <canvas id="detailChart"></canvas>
+                    </div>
+
+                    <div class="timeline-area">
+                        <h4>Histórico de Entregas</h4>
+                        <div id="timelineTrack" class="timeline-track"></div>
+                    </div>
+                </div>
+
+                <div id="mode-edit" style="display:none">
+                    <input type="hidden" id="inp-id">
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>ID Sistema</label>
+                            <input type="text" value="AUTO" class="input-field" disabled
+                                style="text-align:center; opacity:0.5;">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Nome do Indicador</label>
+                            <input type="text" id="inp-name" class="input-field" placeholder="Ex: Taxa de Ocupação">
+                        </div>
+
+                        <div class="form-group">
+                            <label>
+                                Setor
+                                <span id="btn-toggle-sector" onclick="toggleNewSector()"
+                                    style="cursor:pointer; color:var(--accent); float:right; font-size:0.65rem; font-weight:600;">(Novo?)</span>
+                            </label>
+                            <select id="inp-sector" class="input-field"></select>
+                            <input type="text" id="inp-new-sector" class="input-field" style="display:none;"
+                                placeholder="Digite o novo setor">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Meta Alvo</label>
+                            <input type="text" id="inp-meta" class="input-field" placeholder="0">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Lógica</label>
+                            <select id="inp-logic" class="input-field">
+                                <option value="maior">Maior Melhor (↑)</option>
+                                <option value="menor">Menor Melhor (↓)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Unidade de Medida</label>
+                            <select id="inp-format" class="input-field">
+                                <optgroup label="Básicos">
+                                    <option value="number">Número</option>
+                                    <option value="money">Reais</option>
+                                    <option value="percent">Percentual</option>
+                                    <option value="patients">Pacientes</option>
+                                </optgroup>
+                                <optgroup label="Tempo">
+                                    <option value="time">Horas</option>
+                                    <option value="minutes">Minutos</option>
+                                    <option value="days">Dias</option>
+                                    <option value="years">Anos</option>
+                                </optgroup>
+                                <optgroup label="Volume e Peso">
+                                    <option value="m3">Metro Cúbico</option>
+                                    <option value="liters">Litros</option>
+                                    <option value="ml">Mililitros</option>
+                                    <option value="kg">Quilograma</option>
+                                </optgroup>
+                                <optgroup label="Outros">
+                                    <option value="kwh">Quilowatt/hora</option>
+                                    <option value="gas">Botijão</option>
+                                    <option value="cm">Centímetros</option>
+                                    <option value="package">Pacote</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4
+                            style="color:var(--text-muted); font-size:0.8rem; text-transform:uppercase; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:5px;">
+                            Lançamentos Mensais
+                        </h4>
+                        <div class="months-grid" id="monthsGrid">
+                        </div>
+                    </div>
+
+                </div>
+
+                <div id="mode-sectors" style="display:none">
+                    <!-- Dynamic Sector List injected via JS -->
+                    <p style="color:var(--text-muted); text-align:center; padding:20px">Carregando setores...</p>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <div id="footer-view" class="footer-content right">
+                    <button class="btn-ghost" onclick="switchToEditMode()"><i data-lucide="pencil" size="16"></i> Editar
+                        Dados</button>
+                    <button class="btn-primary" onclick="closeModal('mainModal')">Fechar</button>
+                </div>
+                <div id="footer-edit" class="footer-content split" style="display:none">
+                    <button class="btn-danger" onclick="deleteItem()">Excluir</button>
+                    <div class="gap-10">
+                        <button class="btn-ghost" onclick="switchToViewMode()">Cancelar</button>
+                        <button class="btn-primary" onclick="saveItem()">Salvar Alterações</button>
+                    </div>
+                </div>
+                <div id="footer-sectors" class="footer-content right" style="display:none">
+                    <button class="btn-primary" onclick="closeModal('mainModal'); renderApp();">Concluir</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="pdfModal">
+        <div class="modal-box small">
+            <div class="modal-header">
+                <h3>Exportar Dados</h3>
+                <button class="close-btn" onclick="closeModal('pdfModal')"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body centered">
+                <p style="color:var(--text-muted); margin-bottom:20px; font-size:0.9rem">Selecione o formato desejado:
+                </p>
+                <button class="btn-option" onclick="generateExport('table-pdf')">
+                    <i data-lucide="file-text"></i> Relatório em PDF (Tabela)
+                </button>
+                <button class="btn-option" onclick="generateExport('excel')">
+                    <i data-lucide="sheet"></i> Planilha Editável (Excel)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="monthModal">
+        <div class="modal-box small">
+            <div class="modal-header">
+                <h3 id="monthModalTitle">Detalhes</h3>
+                <button class="close-btn" onclick="closeModal('monthModal')"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body centered">
+                <div class="month-stat-big">
+                    <span class="label">Valor Realizado</span>
+                    <span class="value" id="monthValue">-</span>
+                </div>
+                <div class="month-stat-row">
+                    <div class="ms-item">
+                        <span class="label">Meta</span>
+                        <span class="val" id="monthMeta">-</span>
+                    </div>
+                    <div class="ms-item">
+                        <span class="label">Status</span>
+                        <span class="val" id="monthStatus">-</span>
+                    </div>
+                </div>
+                <div class="month-delivery">
+                    <span class="label">Data de Entrega</span>
+                    <div class="delivery-badge" id="monthDelivery">-</div>
+                </div>
+            </div>
+            <div class="modal-footer centered">
+                <button class="btn-primary full" onclick="closeModal('monthModal')">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="analysisModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2 id="analysisModalTitle">Análise Gerencial</h2>
+                <button class="close-btn" onclick="closeModal('analysisModal')"><i data-lucide="x"></i></button>
+            </div>
+
+            <div class="modal-body">
+                <div
+                    style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid var(--border);">
+                    <div>
+                        <span
+                            style="display:block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Indicador</span>
+                        <span id="analysisName"
+                            style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">nome</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <span
+                            style="display:block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Período</span>
+                        <span id="analysisPeriodLabel"
+                            style="font-size: 0.9rem; font-weight: 600; color: var(--text-main);">Mês/Ano</span>
+                    </div>
+                </div>
+
+                <!-- Stats Grid for Clarity -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+                    <div
+                        style="background: var(--bg-elevated); padding: 10px; border-radius: 8px; text-align: center; border: 1px solid var(--border);">
+                        <span
+                            style="display:block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Meta</span>
+                        <span id="analysisMeta"
+                            style="font-size: 1rem; font-weight: 700; color: var(--text-main);">-</span>
+                    </div>
+                    <div
+                        style="background: var(--bg-elevated); padding: 10px; border-radius: 8px; text-align: center; border: 1px solid var(--border);">
+                        <span
+                            style="display:block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Realizado</span>
+                        <span id="analysisReal"
+                            style="font-size: 1rem; font-weight: 700; color: var(--text-main);">-</span>
+                        <div id="analysisDeviationBadge" style="margin-top: 5px; font-size: 0.7rem;"></div>
+                    </div>
+                    <div
+                        style="background: var(--bg-elevated); padding: 10px; border-radius: 8px; text-align: center; border: 1px solid var(--border);">
+                        <span
+                            style="display:block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Objetivo</span>
+                        <span id="analysisLogic"
+                            style="font-size: 0.9rem; font-weight: 600; color: var(--text-main);">-</span>
+                    </div>
+                </div>
+
+                <div id="previousReviewBlock"
+                    style="background: var(--bg-elevated); padding: 15px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 20px; display: none;">
+                    <h4
+                        style="margin: 0 0 10px 0; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="history" size="14"></i> Resultado da Ação Anterior
+                    </h4>
+                    <div style="display: flex; gap: 20px; align-items: center;">
+                        <div style="flex: 1; min-width: 0;"> <!-- min-width: 0 fixes flex child overflow -->
+
+                            <!-- CAUSA RAIZ (Novo) -->
+                            <span style="display:block; font-size: 0.7rem; color: var(--text-muted);">Causa Raiz:</span>
+                            <p id="prevCauseText"
+                                style="margin: 4px 0 10px 0; font-size: 0.9rem; color: var(--text-main); font-style: italic; word-wrap: break-word; overflow-wrap: break-word;">
+                                -</p>
+
+                            <span style="display:block; font-size: 0.7rem; color: var(--text-muted);">Plano
+                                Definido:</span>
+                            <p id="prevPlanText"
+                                style="margin: 4px 0 0 0; font-size: 0.9rem; color: var(--text-main); font-style: italic; word-wrap: break-word; overflow-wrap: break-word;">
+                                -</p>
+                        </div>
+                        <div style="text-align: right;">
+                            <span
+                                style="display:block; font-size: 0.7rem; color: var(--text-muted);">Expectativa:</span>
+                            <span id="prevMetaValue" style="font-weight: 700;">-</span>
+                            <div id="prevResultBadge" style="margin-top: 5px;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <h4 style="margin: 0 0 15px 0; color: var(--text-main); font-size: 0.95rem;">Registro do Mês</h4>
+
+                <div class="form-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 15px;">
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label>Análise Crítica</label>
+                        <textarea id="ana-critical" class="input-field" rows="3"
+                            placeholder="O que aconteceu neste mês?" style="height: auto;"></textarea>
+                    </div>
+
+                    <div class="form-group" style="grid-column: span 1;">
+                        <label>Causa Raiz</label>
+                        <input type="text" id="ana-cause" class="input-field" placeholder="Motivo principal">
+                    </div>
+                    <div class="form-group" style="grid-column: span 1;">
+                        <label>Responsável</label>
+                        <input type="text" id="ana-responsible" class="input-field" placeholder="Quem atuará?">
+                    </div>
+
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label>Plano de Ação (5W2H Simplificado)</label>
+                        <textarea id="ana-plan" class="input-field" rows="3"
+                            placeholder="O que será feito para melhorar/manter?" style="height: auto;"></textarea>
+                    </div>
+
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label>Expectativa (Próximo Mês)</label>
+                        <input type="text" id="ana-next-meta" class="input-field"
+                            placeholder="Expectativa de resultado (Numérico ou Tempo)">
+                        <small style="color: var(--text-muted); font-size: 0.7rem; margin-top: 5px;">*Defina quanto
+                            espera atingir no mês seguinte com esta ação.</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-danger" style="margin-right: auto;" onclick="clearAnalysisForm()">
+                    <i data-lucide="trash-2"
+                        style="width: 14px; height: 14px; vertical-align: middle; margin-right: 5px;"></i> Limpar
+                </button>
+                <button class="btn-ghost" onclick="closeModal('analysisModal')">Cancelar</button>
+                <button class="btn-primary" onclick="saveAnalysis()">Salvar Análise</button>
+            </div>
+        </div>
+    </div>
+
+
+
+    <div id="toast" class="toast">Salvo com sucesso!</div>
+
+    <script src="js/main.js"></script>
+</body>
+
+</html>

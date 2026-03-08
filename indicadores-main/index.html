@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - FAV Analytics</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        body { 
+            margin: 0; padding: 0; 
+            font-family: 'Outfit', sans-serif; 
+            background: #0f172a; 
+            height: 100vh; 
+            display: flex; align-items: center; justify-content: center;
+        }
+        .auth-box { 
+            background: #1e293b; 
+            padding: 40px 30px; 
+            border-radius: 16px; 
+            border: 1px solid #334155; 
+            text-align: center; 
+            color: white; 
+            width: 320px; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6); 
+        }
+        .auth-box .icon {
+            font-size: 48px;
+            color: #38bdf8;
+            margin-bottom: 10px;
+        }
+        .auth-box h2 { 
+            margin-top: 0; color: #f8fafc; font-size: 28px; margin-bottom: 5px; font-weight: 700;
+        }
+        .auth-box p {
+            font-size: 14px; color: #94a3b8; margin-bottom: 25px;
+        }
+        .input-group {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        .input-group i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+            font-size: 18px;
+        }
+        .auth-box input { 
+            width: 100%; box-sizing: border-box; 
+            padding: 14px 14px 14px 40px; 
+            border-radius: 8px; border: 1px solid #475569; 
+            background: #0f172a; color: white; 
+            font-family: inherit; font-size: 15px;
+            transition: all 0.2s;
+        }
+        .auth-box input:focus {
+            outline: none;
+            border-color: #38bdf8;
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+        }
+        .auth-box button { 
+            width: 100%; padding: 14px; 
+            background: #38bdf8; color: #0f172a; 
+            border: none; border-radius: 8px; 
+            font-weight: 700; cursor: pointer; transition: 0.2s; 
+            font-family: inherit; font-size: 16px; 
+            display: flex; justify-content: center; align-items: center; gap: 8px;
+        }
+        .auth-box button:hover { background: #0ea5e9; transform: translateY(-1px); }
+        .auth-box button:active { transform: translateY(1px); }
+        #msg-erro { 
+            color: #ef4444; background: rgba(239, 68, 68, 0.1);
+            padding: 10px; border-radius: 6px;
+            margin-top: 20px; font-size: 14px; display: none; font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-box">
+        <i class="ph-fill ph-lock-key icon"></i>
+        <h2>Acesso Restrito</h2>
+        <p>Insira sua senha para acessar os painéis do FAV Analytics.</p>
+        
+        <input type="text" id="input-usuario" placeholder="Insira seu usuário" value="admin" style="display:none;" />
+        
+        <div class="input-group">
+            <i class="ph ph-password"></i>
+            <input type="password" id="input-token" placeholder="Digite sua senha" onkeydown="if(event.key==='Enter') validarEEntrar();">
+        </div>
+
+        <button id="btn-login" onclick="validarEEntrar()">Entrar <i class="ph-bold ph-arrow-right"></i></button>
+        <div id="msg-erro"></div>
+    </div>
+
+    <script>
+        async function validarEEntrar() {
+            const senha = document.getElementById('input-token').value;
+            if (!senha) return mostrarErro("Digite a senha.");
+            
+            document.getElementById('msg-erro').style.display = 'none';
+            document.getElementById('btn-login').innerHTML = '<i class="ph ph-spinner ph-spin"></i> Validando...';
+            
+            try {
+                const resp = await fetch('api/login_api.php?action=login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ usuario: 'admin', senha: senha })
+                });
+                
+                const res = await resp.json();
+                
+                if (res.sucesso) {
+                    const params = new URLSearchParams(window.location.search);
+                    const next = params.get('next') || 'dashboard.html';
+                    window.location.href = next;
+                } else {
+                    mostrarErro(res.erro || 'Credenciais inválidas.');
+                }
+            } catch (err) {
+                mostrarErro("Erro de conexão com o servidor.");
+            }
+        }
+
+        function mostrarErro(msg) {
+            const div = document.getElementById('msg-erro');
+            div.innerText = msg; 
+            div.style.display = 'block';
+            document.getElementById('btn-login').innerHTML = 'Entrar <i class="ph-bold ph-arrow-right"></i>';
+        }
+    </script>
+</body>
+</html>

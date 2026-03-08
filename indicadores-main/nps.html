@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard NPS Executivo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="css/nps.css">
+</head>
+
+<body>
+    <div id="conteudo-dashboard">
+        <div id="loading-overlay" class="loading-overlay hidden">
+            <div class="spinner"></div>
+            <div style="color: var(--text-dim); font-weight: 500; letter-spacing: 1px;">Sincronizando Dados...</div>
+        </div>
+
+        <aside class="sidebar">
+            <div class="brand"><i class="ph-fill ph-database"></i> Painel NPS</div>
+            <div class="nav-item active" id="btn-inst" onclick="mudarUnidade('INSTITUCIONAL')"><i
+                    class="ph ph-buildings"></i> Institucional</div>
+            <div class="nav-item" id="btn-fav" onclick="mudarUnidade('FAV')"><i class="ph ph-hospital"></i> FAV
+            </div>
+            <div class="nav-item" id="btn-cer" onclick="mudarUnidade('CER')"><i class="ph ph-wheelchair"></i>CER IV
+            </div>
+
+        </aside>
+
+        <main class="main-area">
+            <header class="topbar">
+                <div style="display: flex; flex-direction: column;">
+                    <div class="topbar-title" id="titulo-unidade">Visão Geral - Institucional</div>
+                    <div style="display: flex; align-items: center; margin-top: 8px;">
+                        <span id="subtitulo-periodo"
+                            style="background: rgba(139, 92, 246, 0.2); border: 1px solid var(--brand-secondary); color: #fff; font-size: 14px; font-weight: 600; padding: 6px 14px; border-radius: 20px; box-shadow: 0 4px 10px rgba(139, 92, 246, 0.15);">
+                            <i class="ph-fill ph-calendar-blank" style="margin-right: 6px;"></i> Carregando período...
+                        </span>
+                    </div>
+                </div>
+                <div class="filters-area">
+                    <select id="filtro-mes" class="select-dark" onchange="aplicarFiltros()">
+                        <option value="todos">Todo o Período</option>
+                        <option value="1">Janeiro</option>
+                        <option value="2">Fevereiro</option>
+                        <option value="3">Março</option>
+                        <option value="4">Abril</option>
+                        <option value="5">Maio</option>
+                        <option value="6">Junho</option>
+                        <option value="7">Julho</option>
+                        <option value="8">Agosto</option>
+                        <option value="9">Setembro</option>
+                        <option value="10">Outubro</option>
+                        <option value="11">Novembro</option>
+                        <option value="12">Dezembro</option>
+                    </select>
+                    <button class="btn-ai" id="btn-gerar-ia" onclick="gerarInsightsIA()"><i
+                            class="ph-fill ph-magic-wand"></i> Gerar Auditoria IA</button>
+                </div>
+            </header>
+
+            <div class="content">
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-title">Score Final (NPS) <i class="ph ph-info"
+                                title="Cálculo: % Promotores - % Detratores." style="cursor:help;"></i></div>
+                        <div class="kpi-value text-primary" id="kpi-nps">--</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-title">Promotores (9-10) <i class="ph ph-info"
+                                title="Pacientes leais que recomendariam a instituição." style="cursor:help;"></i></div>
+                        <div class="kpi-value text-success" id="kpi-promotores">--</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-title">Neutros (7-8) <i class="ph ph-info"
+                                title="Pacientes satisfeitos, mas indiferentes." style="cursor:help;"></i></div>
+                        <div class="kpi-value text-warning" id="kpi-neutros">--</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-title">Detratores (1-6) <i class="ph ph-info" title="Pacientes insatisfeitos."
+                                style="cursor:help;"></i></div>
+                        <div class="kpi-value text-danger" id="kpi-detratores">--</div>
+                    </div>
+                </div>
+
+                <div class="middle-grid">
+                    <div class="chart-card">
+                        <div class="card-header">Evolução do Volume e Score</div>
+                        <div class="chart-wrapper"><canvas id="chartEvolucao"></canvas></div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="card-header">Distribuição de Avaliações</div>
+                        <div class="chart-wrapper"><canvas id="chartDistribuicao"></canvas></div>
+                    </div>
+                </div>
+
+                <div class="ai-card" style="margin-bottom: 24px;">
+                    <div class="card-header"
+                        style="color: var(--brand-secondary); display: flex; justify-content: space-between;">
+                        <span><i class="ph-fill ph-sparkle"></i> Insights Qualitativos (IA)</span>
+                        <span id="ia-status-mes"
+                            style="font-size: 12px; color: var(--text-dim); font-weight: 400;">Aguardando
+                            geração...</span>
+                    </div>
+                    <div class="ai-grid">
+                        <div>
+                            <div
+                                style="color: var(--success); font-weight: 600; font-size: 14px; text-transform: uppercase;">
+                                Principais Elogios</div>
+                            <ul class="ai-list" id="lista-elogios">
+                                <li>Clique em "Gerar Auditoria IA" no topo da página.</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <div
+                                style="color: var(--danger); font-weight: 600; font-size: 14px; text-transform: uppercase;">
+                                Oportunidades de Melhoria</div>
+                            <ul class="ai-list" id="lista-criticas">
+                                <li>A IA analisará os feedbacks do mês selecionado.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-card" style="border-color: var(--border-glass);">
+                    <div class="card-header" style="color: var(--text-main);"><i class="ph-fill ph-chats"></i> Relatos
+                        Anônimos Coletados</div>
+                    <div id="feedbacks-container" style="max-height: 350px; overflow-y: auto; padding-right: 10px;">
+                        <p style="color: var(--text-dim); padding: 10px;">Carregando relatos...</p>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script src="js/nps.js"></script>
+</body>
+
+</html>
